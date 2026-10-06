@@ -23,6 +23,12 @@ const sourcemapsFlag = process.argv.includes("--sourcemaps")
 const plugin = createSolidTransformPlugin()
 const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
 
+// --target-os <win32|darwin|linux>: restrict the build to a single OS.
+// Used by bundle-opencode.ts in CI to avoid building all 12 targets when
+// only one platform's binary is needed (e.g. Windows-only CI build).
+const targetOsFlagIdx = process.argv.indexOf("--target-os")
+const targetOsFilter: string | null = targetOsFlagIdx !== -1 ? (process.argv[targetOsFlagIdx + 1] ?? null) : null
+
 const createEmbeddedWebUIBundle = async () => {
   console.log(`Building Web UI to embed in the binary`)
   const appDir = path.join(import.meta.dirname, "../../app")
@@ -113,7 +119,7 @@ const allTargets: {
   },
 ]
 
-const targets = singleFlag
+const targets = (singleFlag
   ? allTargets.filter((item) => {
       if (item.os !== process.platform || item.arch !== process.arch) {
         return false
@@ -133,6 +139,7 @@ const targets = singleFlag
       return true
     })
   : allTargets
+).filter((item) => targetOsFilter === null || item.os === targetOsFilter)
 
 await $`rm -rf dist`
 
